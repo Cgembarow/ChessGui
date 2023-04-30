@@ -31,18 +31,32 @@ void initializeBoardState(){
 
 int main(){
 
-    const int WindowWidth = 800;
-    const int WindowHeight = 800;
+    const int WindowWidth = 480;
+    const int WindowHeight = 480;
     InitWindow(WindowWidth, WindowHeight, "MyGame");
 
     //LoadImage("./Chess_blt60.png");
-    Image pawn = LoadImage("resources/Chess_blt60.png");
+    Image ChessPieceArray = LoadImage("resources/ChessPiecesArray.png");
     
-    Texture2D texture = LoadTextureFromImage(pawn);
+    Rectangle queen = {0, 0, 60, 60};
+    Rectangle king = {60, 0, 60, 60};
+    Rectangle rook = {120, 0, 60, 60};
+    Rectangle knight = {180, 0, 60, 60};
+    Rectangle bishop = {240, 0, 60, 60};
+    Rectangle pawn = {300, 0, 60, 60};
+    Rectangle queenB = {0, 60, 60, 60};
+    Rectangle kingB = {60, 60, 60, 60};
+    Rectangle rookB = {120, 60, 60, 60};
+    Rectangle knightB = {180, 60, 60, 60};
+    Rectangle bishopB = {240, 60, 60, 60};
+    Rectangle pawnB = {300, 60, 60, 60};
+    Texture2D texture = LoadTextureFromImage(ChessPieceArray);
+
+
     
   
     struct ChessBoard board;
-
+Vector2 position = {0,0};
     //intializing constants
     int x = 0;
     int y = 0;
@@ -57,9 +71,7 @@ int main(){
     
 
 
-    //const int WindowWidth = 800;
-    //const int WindowHeight = 800;
-    //InitWindow(WindowWidth, WindowHeight, "MyGame");
+   
     SetTargetFPS(60);
 
     fillBoardGraphics(board.BoardGraphics, board.BoardCells);
@@ -84,12 +96,12 @@ int main(){
                     b = 0;
                     a = 255;
                 }
-                DrawRectangle(x + i*100, y + j*100, 100, 100, (Color){r,g,b,a});
+                DrawRectangle(x + i*60, y + j*60, 60, 60, (Color){r,g,b,a});
                 
             }
             
         }
-       DrawTexture(texture, 100,100,(Color){0,0,0,255});
+       DrawTextureRec(texture,king,position,BLACK );
      
        EndDrawing(); 
     }
