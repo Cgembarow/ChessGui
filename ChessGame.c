@@ -8,6 +8,10 @@ struct ChessBoard{
     int BoardState[size][size];
 };
 
+struct Piece{
+
+};
+
 //determine if cell is green or white
 void fillBoardGraphics(int arr[][size], int arr2[][size]){
     for(int i = 0; i < size; i++){
@@ -20,10 +24,6 @@ void fillBoardGraphics(int arr[][size], int arr2[][size]){
 
 //intial location for each piece
 void initializeBoardState(Texture2D texture){
-
-   
-
-    
 
     Vector2 positionKB = {240,0};
     Vector2 positionQB = {180,0};
@@ -44,14 +44,13 @@ void initializeBoardState(Texture2D texture){
     Vector2 positionRW2 = {420,420};
 
    
-
-
     Rectangle queen = {0, 0, 60, 60};
     Rectangle king = {60, 0, 60, 60};
     Rectangle rook = {120, 0, 60, 60};
     Rectangle knight = {180, 0, 60, 60};
     Rectangle bishop = {240, 0, 60, 60};
     Rectangle pawn = {300, 0, 60, 60};
+
     Rectangle queenB = {0, 60, 60, 60};
     Rectangle kingB = {60, 60, 60, 60};
     Rectangle rookB = {120, 60, 60, 60};
@@ -73,6 +72,7 @@ void initializeBoardState(Texture2D texture){
     for(int i = 0; i < 8; i++){
         DrawTextureRec(texture,pawn,(Vector2){i * 60, 60},WHITE );
     }
+
    //Draw White Pieces
     DrawTextureRec(texture,kingB,positionKW,WHITE );
     DrawTextureRec(texture,queenB,positionQW,WHITE );
@@ -90,12 +90,21 @@ void initializeBoardState(Texture2D texture){
 
 };
 
+
+void movePiece(){
+
+}
+
+
+
 int main(){
 
+    int redx = -1;
+    int redy = -1;
     const int WindowWidth = 480;
     const int WindowHeight = 480;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(WindowWidth, WindowHeight, "MyGame");
+    InitWindow(WindowWidth, WindowHeight, "SUPER AWESOME JOE BIDEN CHESS");
     
 
      //LoadImage("./Chess_blt60.png");
@@ -126,6 +135,11 @@ int main(){
 
         for(int i = 0; i < size; i++){
             for(int j = 0; j < size; j++){
+                // if is red then stay red 
+                if(i == redx && j == redy){
+                    DrawRectangle(i*60, j*60, 60, 60, RED);
+                    continue;
+                }
                 if(board.BoardGraphics[i][j] == 0){
                     r = 232;
                     g = 220;
@@ -141,8 +155,37 @@ int main(){
                 DrawRectangle(x + i*60, y + j*60, 60, 60, (Color){r,g,b,a});  
             }
         }
+        bool rectangleShown = false; // initialize the state to not shown
+
+        Vector2 mouseposition = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            bool clickedOnTile = false;
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (mouseposition.x >= i*60 && mouseposition.x < (i+1)*60 &&
+                        mouseposition.y >= j*60 && mouseposition.y < (j+1)*60) {
+                       
+                         
+                            
+                            // if the rectangle is not shown, show it on click
+                            if(redx == i && redy == j){
+                                    redx = -1; 
+                                    redy = -1;
+                                    continue;
+                                }  
+                            redx = i;
+                            redy = j;
+                    }
+                }
+            }
+        }
       initializeBoardState(texture);
+     
+
         EndDrawing(); 
     }
     CloseWindow();
 }
+
+//cc ChessGame.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+
