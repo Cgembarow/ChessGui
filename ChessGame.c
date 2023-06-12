@@ -1,9 +1,11 @@
 #include <raylib.h>
 #include <string.h>
+// #include <stdio.h>
 
 #define SIZE 8
 
-enum Outcome {
+enum Outcome
+{
     LEGAL,
     ILLEGAL,
     CAPTURE
@@ -13,28 +15,15 @@ struct ChessBoard
 {
     int boardGraphics[SIZE][SIZE];
     char *boardState[SIZE][SIZE];
+    bool whiteTurn;
 };
 
-struct SelectedPiece{
+struct SelectedPiece
+{
     int x;
     int y;
     bool isSelected;
 };
-
- enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]){
-    switch (boardState[selectedX][selectedY][1])
-    {
-        case 'P' : {
-            if(selectedY == targetY && targetY == selectedY + 1){
-                return LEGAL;
-            }
-            else return ILLEGAL; 
-        }
-
-        default : return LEGAL;
-    }
-}
-
 
 void fillBoardGraphics(int arr[][SIZE])
 {
@@ -119,15 +108,107 @@ void drawBoardState(char *boardState[SIZE][SIZE], Texture2D texture)
 
 void swapElements(char *boardState[SIZE][SIZE], int x1, int y1, int x2, int y2)
 {
-    char *temp = boardState[y1][x1]; // Swap y1 and x1
+    char *temp = boardState[y1][x1];         // Swap y1 and x1
     boardState[y1][x1] = boardState[y2][x2]; // Swap y2 and x2
-    boardState[y2][x2] = temp; // Swap y2 and x2
+    boardState[y2][x2] = temp;               // Swap y2 and x2
 }
 
+enum Outcome pawnCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+    int direction = (boardState[selectedY][selectedX][0] == 'W') ? -1 : 1;
+
+    if (targetY == selectedY + direction && (targetX == selectedX + 1 || targetX == selectedX - 1))
+    {
+
+        if (boardState[targetY][targetX] != NULL && boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
+        {
+            return CAPTURE;
+        }
+    }
+
+    if (targetY == selectedY + direction && targetX == selectedX && boardState[targetY][targetX] == NULL)
+    {
+        return LEGAL;
+    }
+
+    if (targetY == selectedY + 2 * direction && targetX == selectedX && boardState[targetY][targetX] == NULL)
+    {
+
+        if ((selectedY == 1 && direction == 1) || (selectedY == 6 && direction == -1))
+        {
+            return LEGAL;
+        }
+    }
+    return ILLEGAL;
+}
+
+enum Outcome rookCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+    
+}
+enum Outcome knightCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+}
+enum Outcome bishopCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+}
+enum Outcome queenCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+}
+enum Outcome kingCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+}
+
+enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn)
+{   
+    if(turn == 'W'){
+        if(boardState[selectedY][selectedX][0] == 'B'){
+            return ILLEGAL;
+        }
+    }
+
+    if(turn == 'B'){
+        if(boardState[selectedY][selectedX][0] == 'W'){
+            return ILLEGAL;
+        }
+    }
+
+
+    switch (boardState[selectedY][selectedX][1])
+    {
+    case 'P':
+    {
+        return pawnCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+
+    case 'R':
+    {
+        return rookCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    case 'N':
+    {
+        return knightCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    case 'B':
+    {
+        return bishopCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    case 'Q':
+    {
+        return queenCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    case 'K':
+    {
+        return kingCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+        return ILLEGAL;
+    }
+}
 
 void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPiece)
 {
     Vector2 mouseposition = GetMousePosition();
+    char turn;
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
     {
@@ -147,26 +228,41 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
             int selectedX = selectedPiece->x;
             int selectedY = selectedPiece->y;
 
-            /*enum Outcome result = isValidMove(selectedX, selectedY, targetX, targetY, board);
-            switch (result){
+            if (board->whiteTurn)
+            {
+                turn = 'W';
+            }
+            else
+            {
+                turn = 'B';
+            }
 
-                case LEGAL: {
+            enum Outcome result = isValidMove(selectedX, selectedY, targetX, targetY, board->boardState, turn);
+
+            switch (result)
+            {
+                case LEGAL:
+                {
                     swapElements(board->boardState, selectedX, selectedY, targetX, targetY);
+                    board->whiteTurn = !board->whiteTurn; // Switch the turn
                     break;
                 }
-
-                case ILLEGAL: {
+                case ILLEGAL:
+                {
+                    selectedPiece->x = -1;
+                    selectedPiece->y = -1;
+                    selectedPiece->isSelected = false;
                     break;
                 }
-
-                case CAPTURE: {
+                case CAPTURE:
+                {
+                    board->boardState[targetY][targetX] = NULL;
                     swapElements(board->boardState, selectedX, selectedY, targetX, targetY);
-                    board->boardState[selectedX][selectedY] = NULL;
+                    board->whiteTurn = !board->whiteTurn; // Switch the turn
                     break;
                 }
-            }*/
-            
-            swapElements(board->boardState, selectedX, selectedY, targetX, targetY);
+            }
+
             // Reset selected piece
             selectedPiece->x = -1;
             selectedPiece->y = -1;
@@ -174,6 +270,7 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
         }
     }
 }
+
 
 void handleSelectedPiece(struct ChessBoard *board, struct SelectedPiece *selectedPiece, int *redx, int *redy)
 {
@@ -188,7 +285,6 @@ void handleSelectedPiece(struct ChessBoard *board, struct SelectedPiece *selecte
         *redy = -1;
     }
 }
-
 
 void drawBoard(struct ChessBoard *board, int redx, int redy)
 {
@@ -224,17 +320,13 @@ void drawBoard(struct ChessBoard *board, int redx, int redy)
     }
 }
 
-
-
-
-
-
 int main()
 {
     int redx = -1;
     int redy = -1;
     const int WindowWidth = 480;
     const int WindowHeight = 480;
+    
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(WindowWidth, WindowHeight, "CHESS the Game");
@@ -246,22 +338,20 @@ int main()
     struct ChessBoard board;
     struct SelectedPiece selectedPiece;
 
-   
-   int x = 0;
-   int y = 0;
-
+    int x = 0;
+    int y = 0;
 
     SetTargetFPS(60);
 
     fillBoardGraphics(board.boardGraphics);
     initializeBoardState(board.boardState);
     // swapElements(board.boardState, 0, 0, 1, 1);
-    
-    
+
+    board.whiteTurn = true;
+
     while (!WindowShouldClose())
     {
-          
-        
+
         BeginDrawing();
 
         handleMouseInput(&board, &selectedPiece);
@@ -276,4 +366,4 @@ int main()
     return 0;
 }
 
-//cc ChessGame.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+// cc ChessGame.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
