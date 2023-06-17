@@ -1,10 +1,83 @@
 #include <raylib.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define SIZE 8
 
+typedef struct Node
+{
+    int x1;
+    int y1;
+    int x2;
+    int y2;
+    struct Node *next;
+} Node;
 
+Node *head = NULL;
+
+Node *createNode(int x1, int y1, int x2, int y2)
+{
+    Node *newNode = malloc(sizeof(Node));
+    newNode->x1 = x1;
+    newNode->y1 = y1;
+    newNode->x2 = x2;
+    newNode->y2 = y2;
+    newNode->next = NULL;
+    return newNode;
+}
+
+void addNode(int x1, int y1, int x2, int y2)
+{
+    Node *newNode = malloc(sizeof(Node));
+    newNode->x1 = x1;
+    newNode->y1 = y1;
+    newNode->x2 = x2;
+    newNode->y2 = y2;
+    newNode->next = NULL;
+
+    if (head == NULL)
+    {
+        // The list is empty, so the new node becomes the head
+        head = newNode;
+    }
+    else
+    {
+        // Traverse the list to find the last node
+        Node *current = head;
+        while (current->next != NULL)
+        {
+            current = current->next;
+        }
+        // Add the new node to the end of the list
+        current->next = newNode;
+    }
+}
+
+void makeListEmpty()
+{
+    Node *current = head;
+    while (current != NULL)
+    {
+        Node *temp = current;
+        current = current->next;
+        free(temp); // Free each node of the linked list
+    }
+    head = NULL; // Set the head pointer to NULL to indicate an empty list
+}
+
+void printLinkedList(Node *head)
+{
+    Node *current = head;
+
+    while (current != NULL)
+    {
+        printf("(%d, %d, %d, %d) -> ", current->x1, current->y1, current->x2, current->y2);
+        current = current->next;
+    }
+
+    printf("NULL\n");
+}
 
 enum Outcome
 {
@@ -27,6 +100,28 @@ struct SelectedPiece
     bool isSelected;
 };
 
+typedef struct ValidMove
+{
+    int x1;
+    int y1;
+    int x2;
+    int y2;
+} ValidMove;
+
+void freeTempBoard(char *tempBoard[SIZE][SIZE])
+{
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+        {
+            if (tempBoard[i][j] != NULL)
+            {
+                free(tempBoard[i][j]); // Free the memory allocated for each string
+            }
+        }
+    }
+}
+
 void fillBoardGraphics(int arr[][SIZE]);
 void initializeBoardState(char *boardState[SIZE][SIZE]);
 void drawBoardState(char *boardState[SIZE][SIZE], Texture2D texture);
@@ -36,10 +131,14 @@ enum Outcome rookCheck(int selectedX, int selectedY, int targetX, int targetY, c
 enum Outcome knightCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
 enum Outcome bishopCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
 enum Outcome kingCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
+enum Outcome queenCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
+bool isPinned(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn);
+void copyBoardState(char *destination[SIZE][SIZE], char *source[SIZE][SIZE]);
+void sudoValidMovesList(char *tempBoard[SIZE][SIZE], char turn);
 
 enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn);
 
-
+bool doesCheckOccur(int selectedX, int selectedY, int targetX, int targetY, char *tempBoard[SIZE][SIZE], char turn);
 
 void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPiece, Sound capture, Sound move);
 void handleSelectedPiece(struct ChessBoard *board, struct SelectedPiece *selectedPiece, int *redx, int *redy);
@@ -64,10 +163,8 @@ int main()
     Sound capture = LoadSound("resources/capture.mp3");
     Sound move = LoadSound("resources/move-self.mp3");
 
-
     struct ChessBoard board;
     struct SelectedPiece selectedPiece;
-
 
     int x = 0;
     int y = 0;
@@ -84,13 +181,12 @@ int main()
 
     while (!WindowShouldClose())
     {
-        if(IsKeyPressed(KEY_R)){
+        if (IsKeyPressed(KEY_R))
+        {
             PlaySound(notify);
             initializeBoardState(board.boardState);
         }
-            //PlaySound(notify);
-        
-        
+        // PlaySound(notify);
 
         BeginDrawing();
 
@@ -101,7 +197,6 @@ int main()
 
         EndDrawing();
     }
-    
 
     CloseAudioDevice();
     CloseWindow();
@@ -135,6 +230,26 @@ void initializeBoardState(char *boardState[SIZE][SIZE])
         {"WR", "WN", "WB", "WQ", "WK", "WB", "WN", "WR"}};
 
     memcpy(boardState, startingPositions, sizeof(startingPositions));
+}
+
+void copyBoardState(char *destination[SIZE][SIZE], char *source[SIZE][SIZE])
+{
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+        {
+            if (source[i][j] != NULL)
+            {
+                size_t len = strlen(source[i][j]);
+                destination[i][j] = malloc((len + 1) * sizeof(char)); // Allocate memory for the string
+                strcpy(destination[i][j], source[i][j]);              // Copy the string
+            }
+            else
+            {
+                destination[i][j] = NULL;
+            }
+        }
+    }
 }
 
 void drawBoardState(char *boardState[SIZE][SIZE], Texture2D texture)
@@ -198,6 +313,11 @@ void swapElements(char *boardState[SIZE][SIZE], int x1, int y1, int x2, int y2)
 
 enum Outcome pawnCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
 {
+    if (isPinned(selectedX, selectedY, targetX, targetY, boardState, boardState[selectedY][selectedX][0]) == true)
+    {
+        return ILLEGAL;
+    }
+
     int direction = (boardState[selectedY][selectedX][0] == 'W') ? -1 : 1;
 
     if (targetY == selectedY + direction && (targetX == selectedX + 1 || targetX == selectedX - 1))
@@ -345,11 +465,33 @@ enum Outcome kingCheck(int selectedX, int selectedY, int targetX, int targetY, c
     return ILLEGAL;
 }
 
+enum Outcome queenCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
+{
+    if (targetX == -1)
+    {
+        return LEGAL;
+    }
 
+    if (bishopCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
+    {
+        return bishopCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    if (rookCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
+    {
+        return rookCheck(selectedX, selectedY, targetX, targetY, boardState);
+    }
+    else
+        return ILLEGAL;
+}
+
+bool isPinned(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn)
+{
+    return false;
+}
 
 enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn)
 {
-    
+
     if (boardState[selectedY][selectedX] == NULL)
     {
         return ILLEGAL;
@@ -369,7 +511,7 @@ enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY,
             return ILLEGAL;
         }
     }
-    
+
     switch (boardState[selectedY][selectedX][1])
     {
     case 'P':
@@ -391,17 +533,7 @@ enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY,
     }
     case 'Q':
     {
-        // return queenCheck(selectedX, selectedY, targetX, targetY, boardState);
-        if (bishopCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
-        {
-            return bishopCheck(selectedX, selectedY, targetX, targetY, boardState);
-        }
-        if (rookCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
-        {
-            return rookCheck(selectedX, selectedY, targetX, targetY, boardState);
-        }
-        else
-            return ILLEGAL;
+        return queenCheck(selectedX, selectedY, targetX, targetY, boardState);
     }
     case 'K':
     {
@@ -411,9 +543,102 @@ enum Outcome isValidMove(int selectedX, int selectedY, int targetX, int targetY,
     }
 }
 
+// stores all sudo legal moves in a linked list for a given turn.
+void sudoValidMovesList(char *tempBoard[SIZE][SIZE], char turn)
+{
+    // enum Outcome tempResult = isValidMove(selectedX, selectedY, targetX, targetY, tempBoard, turn);
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+        {
+
+            for (int k = 0; k < SIZE; k++)
+            {
+                for (int l = 0; l < SIZE; l++)
+                {
+
+                    if (isValidMove(i, j, k, l, tempBoard, turn) != ILLEGAL)
+                    {
+                        addNode(i, j, k, l);
+                    }
+                }
+            }
+        }
+    }
+    // printLinkedList(head);
+}
+
+bool doesCheckOccur(int selectedX, int selectedY, int targetX, int targetY, char *tempBoard[SIZE][SIZE], char turn)
+{
+    int kingX;
+    int kingY;
+
+    // Make the suggested move
+    swapElements(tempBoard, selectedX, selectedY, targetX, targetY);
+    tempBoard[selectedY][selectedX] = NULL;
+
+    // Find the current turn's king
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+        {
+            // Find own king position
+            if (tempBoard[i][j] != NULL && tempBoard[i][j][0] == turn && strcmp(tempBoard[i][j] + 1, "K") == 0)
+            {
+                kingX = i;
+                kingY = j;
+                break;
+            }
+        }
+    }
+
+    // Swap turn to check valid moves for the other team
+    char otherTeam = (turn == 'W') ? 'B' : 'W';
+
+    // Create a list of possible moves for the other team
+    sudoValidMovesList(tempBoard, otherTeam);
+
+    // Compare king position to x2 and y2 at every node
+    Node *current = head;
+    while (current != NULL)
+    {
+        if (kingY == current->x2 && kingX == current->y2)
+        {
+            // The king is under attack
+
+            // Check if the attacking piece can be captured
+            if (tempBoard[current->y1][current->x1] != NULL && tempBoard[current->y1][current->x1][0] != turn)
+            {
+                // The attacking piece can be captured
+                if (current->x1 == targetX && current->y1 == targetY)
+                {
+                   // if(isValidMove(selectedX, selectedY, targetX, targetY, tempBoard, otherTeam) == CAPTURE){
+                    return false;
+                    //}
+                }
+                else
+                {
+                    // The move does not capture the attacking piece
+                    return true;
+                }
+            }
+            else
+            {
+                // The attacking piece cannot be captured
+                return true;
+            }
+        }
+
+        current = current->next;
+    }
+
+    return false;
+}
+
+
 void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPiece, Sound capture, Sound move)
 {
-    
+    char *tempBoard[SIZE][SIZE];
 
     Vector2 mouseposition = GetMousePosition();
     char turn;
@@ -435,8 +660,7 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
             // Second click, swap selected piece with target tile
             int selectedX = selectedPiece->x;
             int selectedY = selectedPiece->y;
-        
-        
+
             if (board->whiteTurn)
             {
                 turn = 'W';
@@ -446,7 +670,18 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
                 turn = 'B';
             }
 
+            copyBoardState(tempBoard, board->boardState);
+          
             enum Outcome result = isValidMove(selectedX, selectedY, targetX, targetY, board->boardState, turn);
+      
+            if (doesCheckOccur(selectedX, selectedY, targetX, targetY, tempBoard, turn) == true)
+            {
+                printf("CHECK\n");
+                result = ILLEGAL;
+            }
+
+  
+            // printLinkedList(head);
 
             switch (result)
             {
@@ -480,6 +715,13 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
             selectedPiece->isSelected = false;
         }
     }
+
+    // freeTempBoard(tempBoard);
+
+    if (head != NULL)
+    {
+        makeListEmpty();
+    }
 }
 
 void handleSelectedPiece(struct ChessBoard *board, struct SelectedPiece *selectedPiece, int *redx, int *redy)
@@ -508,7 +750,7 @@ void drawBoard(struct ChessBoard *board, int redx, int redy)
             if (i == redx && j == redy)
             {
                 DrawRectangle(i * 60, j * 60, 60, 60, RED);
-                
+
                 continue;
             }
             if (board->boardGraphics[i][j] == 0)
@@ -529,10 +771,5 @@ void drawBoard(struct ChessBoard *board, int redx, int redy)
         }
     }
 }
-
-
-
-
-
 
 // cc ChessGame.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 && ./a.out
