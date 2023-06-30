@@ -2,8 +2,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
-#define SIZE 8
+#include "sudo_valid.h"
+#include "constants.h"
+#include "sudo_valid.c"
+
+
+
 
 typedef struct Node
 {
@@ -79,12 +85,7 @@ void printLinkedList(Node *head)
     printf("NULL\n");
 }
 
-enum Outcome
-{
-    LEGAL,
-    ILLEGAL,
-    CAPTURE
-};
+
 
 struct ChessBoard
 {
@@ -126,12 +127,7 @@ void fillBoardGraphics(int arr[][SIZE]);
 void initializeBoardState(char *boardState[SIZE][SIZE]);
 void drawBoardState(char *boardState[SIZE][SIZE], Texture2D texture);
 void swapElements(char *boardState[SIZE][SIZE], int x1, int y1, int x2, int y2);
-enum Outcome pawnCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
-enum Outcome rookCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
-enum Outcome knightCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
-enum Outcome bishopCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
-enum Outcome kingCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
-enum Outcome queenCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE]);
+
 bool isPinned(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn);
 void copyBoardState(char *destination[SIZE][SIZE], char *source[SIZE][SIZE]);
 void sudoValidMovesList(char *tempBoard[SIZE][SIZE], char turn);
@@ -221,12 +217,13 @@ void initializeBoardState(char *boardState[SIZE][SIZE])
 {
     char *startingPositions[SIZE][SIZE] = {
         {"BR", "BN", "BB", "BQ", "BK", "BB", "BN", "BR"},
-        {"BP", "BP", "BP", "BP", "BP", "BP", "BP", "BP"},
+        //{"BP", "BP", "BP", "BP", "BP", "BP", "BP", "BP"},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-        {"WP", "WP", "WP", "WP", "WP", "WP", "WP", "WP"},
+        {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+        {"WP", "WP", "WP", NULL, "WP", "WP", "WP", "WP"},
         {"WR", "WN", "WB", "WQ", "WK", "WB", "WN", "WR"}};
 
     memcpy(boardState, startingPositions, sizeof(startingPositions));
@@ -311,178 +308,7 @@ void swapElements(char *boardState[SIZE][SIZE], int x1, int y1, int x2, int y2)
     boardState[y2][x2] = temp;               // Swap y2 and x2
 }
 
-enum Outcome pawnCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    if (isPinned(selectedX, selectedY, targetX, targetY, boardState, boardState[selectedY][selectedX][0]) == true)
-    {
-        return ILLEGAL;
-    }
 
-    int direction = (boardState[selectedY][selectedX][0] == 'W') ? -1 : 1;
-
-    if (targetY == selectedY + direction && (targetX == selectedX + 1 || targetX == selectedX - 1))
-    {
-
-        if (boardState[targetY][targetX] != NULL && boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
-        {
-            return CAPTURE;
-        }
-    }
-
-    if (targetY == selectedY + direction && targetX == selectedX && boardState[targetY][targetX] == NULL)
-    {
-        return LEGAL;
-    }
-
-    if (targetY == selectedY + 2 * direction && targetX == selectedX && boardState[targetY][targetX] == NULL)
-    {
-
-        if ((selectedY == 1 && direction == 1) || (selectedY == 6 && direction == -1))
-        {
-            return LEGAL;
-        }
-    }
-    return ILLEGAL;
-}
-
-enum Outcome rookCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    // Check if the target position is in the same row or column as the selected position
-    if (selectedX == targetX || selectedY == targetY)
-    {
-        // Check if there are any pieces between the selected position and the target position
-        int stepX = (targetX > selectedX) ? 1 : ((targetX < selectedX) ? -1 : 0);
-        int stepY = (targetY > selectedY) ? 1 : ((targetY < selectedY) ? -1 : 0);
-
-        int x = selectedX + stepX;
-        int y = selectedY + stepY;
-
-        while (x != targetX || y != targetY)
-        {
-            if (boardState[y][x] != NULL)
-            {
-                // There is a piece blocking the path
-                return ILLEGAL;
-            }
-
-            x += stepX;
-            y += stepY;
-        }
-
-        if (boardState[targetY][targetX] == NULL)
-        {
-            return LEGAL;
-        }
-        else if (boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
-        {
-            return CAPTURE;
-        }
-    }
-
-    return ILLEGAL;
-}
-
-enum Outcome knightCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    // Calculate the absolute difference in x and y positions
-    int deltaX = abs(targetX - selectedX);
-    int deltaY = abs(targetY - selectedY);
-
-    // Check if the absolute differences are valid for a knight move
-    if ((deltaX == 1 && deltaY == 2) || (deltaX == 2 && deltaY == 1))
-    {
-        // Check the target position
-        if (boardState[targetY][targetX] == NULL)
-        {
-            return LEGAL;
-        }
-        else if (boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
-        {
-            return CAPTURE;
-        }
-    }
-
-    return ILLEGAL;
-}
-
-enum Outcome bishopCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    // Check if the target position is on a diagonal from the selected position
-    if (abs(targetX - selectedX) == abs(targetY - selectedY))
-    {
-        // Determine the direction of movement (upward or downward)
-        int stepX = (targetX > selectedX) ? 1 : -1;
-        int stepY = (targetY > selectedY) ? 1 : -1;
-
-        int x = selectedX + stepX;
-        int y = selectedY + stepY;
-
-        while (x != targetX || y != targetY)
-        {
-            if (boardState[y][x] != NULL)
-            {
-                // There is a piece blocking the path
-                return ILLEGAL;
-            }
-
-            x += stepX;
-            y += stepY;
-        }
-
-        if (boardState[targetY][targetX] == NULL)
-        {
-            return LEGAL;
-        }
-        else if (boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
-        {
-            return CAPTURE;
-        }
-    }
-
-    return ILLEGAL;
-}
-
-enum Outcome kingCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    // Calculate the absolute difference in x and y positions
-    int deltaX = abs(targetX - selectedX);
-    int deltaY = abs(targetY - selectedY);
-
-    // Check if the absolute differences are within the valid range for a king move
-    if ((deltaX == 1 && deltaY == 0) || (deltaX == 0 && deltaY == 1) || (deltaX == 1 && deltaY == 1))
-    {
-        // Check the target position
-        if (boardState[targetY][targetX] == NULL)
-        {
-            return LEGAL;
-        }
-        else if (boardState[selectedY][selectedX][0] != boardState[targetY][targetX][0])
-        {
-            return CAPTURE;
-        }
-    }
-
-    return ILLEGAL;
-}
-
-enum Outcome queenCheck(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE])
-{
-    if (targetX == -1)
-    {
-        return LEGAL;
-    }
-
-    if (bishopCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
-    {
-        return bishopCheck(selectedX, selectedY, targetX, targetY, boardState);
-    }
-    if (rookCheck(selectedX, selectedY, targetX, targetY, boardState) != ILLEGAL)
-    {
-        return rookCheck(selectedX, selectedY, targetX, targetY, boardState);
-    }
-    else
-        return ILLEGAL;
-}
 
 bool isPinned(int selectedX, int selectedY, int targetX, int targetY, char *boardState[SIZE][SIZE], char turn)
 {
@@ -557,7 +383,7 @@ void sudoValidMovesList(char *tempBoard[SIZE][SIZE], char turn)
                 for (int l = 0; l < SIZE; l++)
                 {
 
-                    if (isValidMove(i, j, k, l, tempBoard, turn) != ILLEGAL)
+                    if (isValidMove(i, j, k, l, tempBoard, turn) != ILLEGAL && tempBoard[j][i] != NULL)
                     {
                         addNode(i, j, k, l);
                     }
@@ -598,6 +424,9 @@ bool doesCheckOccur(int selectedX, int selectedY, int targetX, int targetY, char
     // Create a list of possible moves for the other team
     sudoValidMovesList(tempBoard, otherTeam);
 
+    // See if any sudovalidmoves puts black in check
+    // Node *temp = head;
+
     // Compare king position to x2 and y2 at every node
     Node *current = head;
     while (current != NULL)
@@ -612,18 +441,21 @@ bool doesCheckOccur(int selectedX, int selectedY, int targetX, int targetY, char
                 // The attacking piece can be captured
                 if (current->x1 == targetX && current->y1 == targetY)
                 {
-                   // if(isValidMove(selectedX, selectedY, targetX, targetY, tempBoard, otherTeam) == CAPTURE){
+                    makeListEmpty();
+                    // if(isValidMove(selectedX, selectedY, targetX, targetY, tempBoard, otherTeam) == CAPTURE){
                     return false;
                     //}
                 }
                 else
                 {
+                    makeListEmpty();
                     // The move does not capture the attacking piece
                     return true;
                 }
             }
             else
             {
+                makeListEmpty();
                 // The attacking piece cannot be captured
                 return true;
             }
@@ -632,9 +464,10 @@ bool doesCheckOccur(int selectedX, int selectedY, int targetX, int targetY, char
         current = current->next;
     }
 
-    return false;
-}
+    makeListEmpty();
 
+    // return false;
+}
 
 void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPiece, Sound capture, Sound move)
 {
@@ -643,7 +476,82 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
     Vector2 mouseposition = GetMousePosition();
     char turn;
 
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+    if (!board->whiteTurn)
+    {
+        makeListEmpty();
+        copyBoardState(tempBoard, board->boardState);
+        sudoValidMovesList(tempBoard, 'B');
+
+        Node *current = head;
+        int count = 0;
+        while (current != NULL)
+        {
+            count++;
+            current = current->next;
+        }
+
+        int arr[count][4];
+        int valid[count][4];
+        int realCount = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            arr[i][0] = head->x1;
+            arr[i][1] = head->y1;
+            arr[i][2] = head->x2;
+            arr[i][3] = head->y2;
+            head = head->next;
+        }
+
+        makeListEmpty();
+
+        
+
+        for (int i = 0; i < count; i++)
+        {
+            //swapElements(tempBoard, arr[i][0], arr[i][1], arr[i][2], arr[i][3]);
+            if (doesCheckOccur(arr[i][0], arr[i][1], arr[i][2], arr[i][3], tempBoard, 'B') == false)
+            {
+                valid[i][0] = arr[i][0];
+                valid[i][1] = arr[i][1];
+                valid[i][2] = arr[i][2];
+                valid[i][3] = arr[i][3];
+                realCount++;
+            }
+        }
+
+        //board->whiteTurn = !board->whiteTurn;
+        for (int i = 0; i < count; i++)
+        {
+            printf("%d %d %d %d\n", valid[i][0], valid[i][1], valid[i][2], valid[i][3]);
+        }
+    
+            int randNum = rand() % realCount;
+
+            if (isValidMove(valid[randNum][1], valid[randNum][0], valid[randNum][3], valid[randNum][2], tempBoard, 'B') == LEGAL)
+            {
+                PlaySound(move);
+                swapElements(board->boardState, valid[randNum][0], valid[randNum][1], valid[randNum][2], valid[randNum][3]);
+                board->whiteTurn = !board->whiteTurn;
+            }
+            else if (isValidMove(valid[randNum][0], valid[randNum][1], valid[randNum][2], valid[randNum][3], tempBoard, 'B') == CAPTURE)
+            {
+                PlaySound(capture);
+                board->boardState[valid[randNum][1]][valid[randNum][0]] = NULL;
+                swapElements(board->boardState, valid[randNum][0], valid[randNum][1], valid[randNum][2], valid[randNum][3]);
+                board->whiteTurn = !board->whiteTurn;
+            }
+            else
+            {
+                swapElements(board->boardState, valid[randNum][0], valid[randNum][1], valid[randNum][2], valid[randNum][3]);
+                printf("FAILED");
+                board->whiteTurn = !board->whiteTurn;
+            }
+        
+        makeListEmpty();
+    }
+
+    if (board->whiteTurn == true && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
     {
         int targetX = mouseposition.x / 60;
         int targetY = mouseposition.y / 60;
@@ -671,16 +579,15 @@ void handleMouseInput(struct ChessBoard *board, struct SelectedPiece *selectedPi
             }
 
             copyBoardState(tempBoard, board->boardState);
-          
+
             enum Outcome result = isValidMove(selectedX, selectedY, targetX, targetY, board->boardState, turn);
-      
+
             if (doesCheckOccur(selectedX, selectedY, targetX, targetY, tempBoard, turn) == true)
             {
                 printf("CHECK\n");
                 result = ILLEGAL;
             }
 
-  
             // printLinkedList(head);
 
             switch (result)
